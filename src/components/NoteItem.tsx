@@ -2,18 +2,47 @@
 // src/components/NoteItem.tsx
 import React from 'react';
 
+import { deleteNote } from '../services/noteService';
 import { Note } from '../types/Note';
 
 interface NoteItemProps {
   note: Note;
   onEdit?: (note: Note) => void;
 }
-// TODO: delete eslint-disable-next-line when you implement the onEdit handler
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 const NoteItem: React.FC<NoteItemProps> = ({ note, onEdit }) => {
   // TODO: manage state for deleting status and error message
+  const [deleting, setDeleting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   // TODO: create a function to handle the delete action, which will display a confirmation (window.confirm) and call the deleteNote function from noteService,
   // and update the deleting status and error message accordingly
+
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(note);
+    }
+  };
+
+  const handleDelete = () => {
+    const confirmed = window.confirm('Are you sure you want to delete this note?');
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError(null);
+
+    deleteNote(note.id)
+      .then(() => {
+        // setDeleting(false);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof Error) {
+          setError(err.message || 'Failed to delete note.');
+          setDeleting(false); // immediately re-enable if there’s an error
+        } else {
+          setError('Failed to delete note.');
+        }
+      });
+  };
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -70,11 +99,20 @@ const NoteItem: React.FC<NoteItemProps> = ({ note, onEdit }) => {
       <div className="note-header">
         <h3>{note.title}</h3>
         <div className="note-actions">
-          <button className="edit-button">Edit</button>
-          <button className="delete-button">{'Delete'}</button>
+          {onEdit && (
+            <button className="edit-button" onClick={handleEdit} disabled={deleting}>
+              Edit
+            </button>
+          )}
+          <button className="delete-button" onClick={handleDelete} disabled={deleting}>
+            {deleting ? 'Deleting...' : 'Delete'}
+          </button>
         </div>
       </div>
+
       <div className="note-content">{note.content}</div>
+      {error && <p className="error-message">{error}</p>}
+
       <div className="note-footer">
         <span title={formatDate(note.lastUpdated)}>
           Last updated: {getTimeAgo(note.lastUpdated)}
